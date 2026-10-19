@@ -34,6 +34,8 @@ class MainActivity : Activity() {
     private var leads = JSONArray(); private var idx = 0
     private var dispositions = listOf("Interested", "Not Interested", "Call Back", "Wrong Number", "Not Reachable", "Already Done")
     private var dialing = false; private var callStart = 0L
+    // Server address is built into the app. If your server address changes, change this one line and rebuild.
+    private val SERVER_URL = "https://dialer.tg2bt.com"
     private val prefs by lazy { getSharedPreferences("dialer", 0) }
 
     override fun onCreate(b: Bundle?) {
@@ -41,7 +43,7 @@ class MainActivity : Activity() {
         window.statusBarColor = brand
         root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setBackgroundColor(bg) }
         setContentView(ScrollView(this).apply { isFillViewport = true; setBackgroundColor(bg); addView(root) })
-        base = prefs.getString("base", "") ?: ""; token = prefs.getString("token", "") ?: ""; agentName = prefs.getString("name", "") ?: ""
+        base = SERVER_URL; token = prefs.getString("token", "") ?: ""; agentName = prefs.getString("name", "") ?: ""
         if (token.isEmpty()) loginUi() else loadLeads()
     }
 
@@ -95,18 +97,16 @@ class MainActivity : Activity() {
     private fun loginUi() {
         screen("Welcome", "Log in to start calling")
         val c = card()
-        val url = field("Server address").apply { setText(base); inputType = InputType.TYPE_TEXT_VARIATION_URI }
         val user = field("Username"); val pass = field("Password", true)
-        c.addView(url); c.addView(user); c.addView(pass)
+        c.addView(user); c.addView(pass)
         c.addView(btn("Log in") {
-            base = url.text.toString().trim().trimEnd('/')
             http("/login", JSONObject().put("username", user.text.toString().trim()).put("password", pass.text.toString())) { code, t ->
                 val j = JSONObject(t)
                 if (code != 200) toast(j.optString("error", "Login failed"))
                 else if (j.getString("role") != "agent") toast("Use an agent account in this app.")
                 else {
                     token = j.getString("token"); agentName = j.optString("name")
-                    prefs.edit().putString("base", base).putString("token", token).putString("name", agentName).apply(); loadLeads()
+                    prefs.edit().putString("token", token).putString("name", agentName).apply(); loadLeads()
                 }
             }
         })
